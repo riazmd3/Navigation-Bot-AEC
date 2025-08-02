@@ -361,16 +361,8 @@ export const NavigationMap: React.FC<NavigationMapProps> = ({
       const campusCenter = L.latLng(12.192850, 79.083730);
       const distance = detectedLocation.distanceTo(campusCenter);
       
-      // Check if location is too far from campus (more than 5km)
-      if (distance > 5000) {
-        console.log(`Location too far: ${distance}m from campus`);
-        
-        // Notify parent component about location issue
-        if (onNavigationInstruction) {
-          onNavigationInstruction("Location is too far from campus. Please check your location or move closer to campus.", distance);
-        }
-        return;
-      }
+      // Log distance for debugging (removed 5km limit)
+      console.log(`Distance from campus: ${distance}m`);
       
       // Update user marker
       if (userMarkerRef.current) {
@@ -585,13 +577,8 @@ export const NavigationMap: React.FC<NavigationMapProps> = ({
     const endPoint = L.latLng(target.lat, target.lng);
     const distance = startPoint.distanceTo(endPoint);
     
-    // Check if destination is too far (more than 5km)
-    if (distance > 5000) {
-      if (onNavigationInstruction) {
-        onNavigationInstruction("Destination is too far from your current location. Please check your location or select a closer destination.", distance);
-      }
-      return;
-    }
+    // Log distance for debugging (removed 5km limit)
+    console.log(`Distance to destination: ${distance}m`);
 
     // Safely remove existing route with proper cleanup
     if (routeControlRef.current) {

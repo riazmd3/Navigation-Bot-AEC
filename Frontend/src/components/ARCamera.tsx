@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Camera, CameraOff, Navigation } from 'lucide-react';
+import { Camera, CameraOff, Navigation, X, Settings, ArrowLeft } from 'lucide-react';
 
 interface ARCameraProps {
   isActive: boolean;
@@ -18,6 +18,7 @@ export const ARCamera: React.FC<ARCameraProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string>('');
+  const [showControls, setShowControls] = useState(false);
 
   useEffect(() => {
     if (isActive) {
@@ -116,15 +117,79 @@ export const ARCamera: React.FC<ARCameraProps> = ({
             </div>
           </div>
           
-          {/* Controls */}
-          <div className="absolute top-4 right-4 flex space-x-2">
-            <button
-              onClick={onToggle}
-              className="p-2 bg-red-600 hover:bg-red-700 text-white rounded-full"
-            >
-              <CameraOff className="w-5 h-5" />
-            </button>
+          {/* Top Controls Bar */}
+          <div className="absolute top-0 left-0 right-0 bg-black bg-opacity-50 backdrop-blur-sm p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={onToggle}
+                  className="flex items-center space-x-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all duration-200"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span className="hidden sm:inline">{language === 'tamil' ? 'திரும்பு' : 'Back'}</span>
+                </button>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setShowControls(!showControls)}
+                  className="p-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg"
+                >
+                  <Settings className="w-4 h-4" />
+                </button>
+                
+                <button
+                  onClick={onToggle}
+                  className="p-2 bg-red-600 hover:bg-red-700 text-white rounded-lg"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
           </div>
+
+          {/* AR Controls Popup */}
+          {showControls && (
+            <div className="absolute top-20 right-4 z-30 bg-white rounded-lg shadow-xl p-4 min-w-48">
+              <div className="space-y-3">
+                <h3 className="font-semibold text-gray-800 text-sm">
+                  {language === 'tamil' ? 'AR கட்டுப்பாடுகள்' : 'AR Controls'}
+                </h3>
+                
+                <div className="space-y-2">
+                  <button
+                    onClick={() => setShowControls(false)}
+                    className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-gray-100 transition-all duration-200"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <Camera className="w-4 h-4" />
+                      <span>{language === 'tamil' ? 'கேமரா மாற்று' : 'Switch Camera'}</span>
+                    </div>
+                  </button>
+                  
+                  <button
+                    onClick={() => setShowControls(false)}
+                    className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-gray-100 transition-all duration-200"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <Navigation className="w-4 h-4" />
+                      <span>{language === 'tamil' ? 'வழிகாட்டுதல் முறை' : 'Navigation Mode'}</span>
+                    </div>
+                  </button>
+                  
+                  <button
+                    onClick={() => setShowControls(false)}
+                    className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-gray-100 transition-all duration-200"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <Settings className="w-4 h-4" />
+                      <span>{language === 'tamil' ? 'அமைப்புகள்' : 'Settings'}</span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

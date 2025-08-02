@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { MapPin, Navigation } from 'lucide-react';
 import { buildings } from '../data/campus';
 
 interface NavigationMapProps {
@@ -361,16 +362,8 @@ export const NavigationMap: React.FC<NavigationMapProps> = ({
       const campusCenter = L.latLng(12.192850, 79.083730);
       const distance = detectedLocation.distanceTo(campusCenter);
       
-      // Check if location is too far from campus (more than 5km)
-      if (distance > 5000) {
-        console.log(`Location too far: ${distance}m from campus`);
-        
-        // Notify parent component about location issue
-        if (onNavigationInstruction) {
-          onNavigationInstruction("Location is too far from campus. Please check your location or move closer to campus.", distance);
-        }
-        return;
-      }
+      // Log distance for debugging (removed 5km limit)
+      console.log(`Distance from campus: ${distance}m`);
       
       // Update user marker
       if (userMarkerRef.current) {
@@ -585,13 +578,8 @@ export const NavigationMap: React.FC<NavigationMapProps> = ({
     const endPoint = L.latLng(target.lat, target.lng);
     const distance = startPoint.distanceTo(endPoint);
     
-    // Check if destination is too far (more than 5km)
-    if (distance > 5000) {
-      if (onNavigationInstruction) {
-        onNavigationInstruction("Destination is too far from your current location. Please check your location or select a closer destination.", distance);
-      }
-      return;
-    }
+    // Log distance for debugging (removed 5km limit)
+    console.log(`Distance to destination: ${distance}m`);
 
     // Safely remove existing route with proper cleanup
     if (routeControlRef.current) {
@@ -749,8 +737,56 @@ export const NavigationMap: React.FC<NavigationMapProps> = ({
   }, [selectedDestination]);
 
   return (
-    <div className="w-full h-full">
+    <div className="w-full h-full relative">
       <div ref={mapRef} className="w-full h-full rounded-lg" />
+      
+      {/* Mobile-friendly map controls overlay */}
+      <div className="absolute top-4 right-4 z-10 flex flex-col space-y-2">
+        {/* Zoom controls */}
+        <div className="bg-white rounded-lg shadow-lg p-1">
+          <button
+            onClick={() => mapInstanceRef.current?.zoomIn()}
+            className="w-8 h-8 flex items-center justify-center bg-white hover:bg-gray-100 rounded-t-lg border-b"
+          >
+            <span className="text-lg font-bold text-gray-700">+</span>
+          </button>
+          <button
+            onClick={() => mapInstanceRef.current?.zoomOut()}
+            className="w-8 h-8 flex items-center justify-center bg-white hover:bg-gray-100 rounded-b-lg"
+          >
+            <span className="text-lg font-bold text-gray-700">−</span>
+          </button>
+        </div>
+        
+        {/* Location button */}
+        <button
+          onClick={() => {
+            if (userLocation && mapInstanceRef.current) {
+              mapInstanceRef.current.setView([userLocation.lat, userLocation.lng], 18, { animate: true });
+            }
+          }}
+          className="w-10 h-10 bg-white rounded-lg shadow-lg flex items-center justify-center hover:bg-gray-100 transition-colors"
+        >
+          <MapPin className="w-5 h-5 text-blue-600" />
+        </button>
+      </div>
+      
+      {/* Map info overlay */}
+      {selectedDestination && (
+        <div className="absolute bottom-4 left-4 right-4 z-10">
+          <div className="bg-white rounded-lg shadow-lg p-3 max-w-sm">
+            <div className="flex items-center space-x-2 mb-2">
+              <Navigation className="w-4 h-4 text-blue-600" />
+              <span className="text-sm font-medium text-gray-800">
+                {selectedDestination}
+              </span>
+            </div>
+            <div className="text-xs text-gray-600">
+              Tap and drag to move the map
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

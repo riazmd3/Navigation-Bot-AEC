@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Volume2, VolumeX, MapPin, Navigation, Clock, Globe, Camera, X, Maximize2 } from 'lucide-react';
+import { Mic, MicOff, Volume2, VolumeX, MapPin, Navigation, Clock, Globe, Camera, X, Maximize2, ArrowLeft, Settings, Map } from 'lucide-react';
 import { Avatar3D } from './Avatar3D';
 import { ChatBubble } from './ChatBubble';
 import { DestinationGrid } from './DestinationGrid';
@@ -33,6 +33,7 @@ export const NavigationBot: React.FC = () => {
   const [navigationMode, setNavigationMode] = useState<'none' | 'map' | 'ar' | 'split'>('none');
   const [lastSpokenInstruction, setLastSpokenInstruction] = useState<string>('');
   const [lastSpeechTime, setLastSpeechTime] = useState<number>(0);
+  const [showMapControls, setShowMapControls] = useState(false);
   
   const speechManagerRef = useRef<SpeechManager | null>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -341,12 +342,7 @@ export const NavigationBot: React.FC = () => {
   };
 
   const resetNavigation = () => {
-    // Stop all current operations
-    speechManagerRef.current?.stopSpeaking();
-    speechManagerRef.current?.stopListening();
-    
-    setIsProcessing(false);
-    setNavState({
+    setNavState(prev => ({
       currentStep: 'welcome',
       selectedDestination: null,
       isListening: false,
@@ -355,7 +351,7 @@ export const NavigationBot: React.FC = () => {
       language: navState.language,
       isARMode: false,
       cameraPermission: false
-    });
+    }));
     setShowMap(false);
     setNavigationMode('none');
     setIsMapFullscreen(false);
@@ -367,6 +363,16 @@ export const NavigationBot: React.FC = () => {
       const response = addMessage('bot', getTranslation('helpMore', navState.language));
       speakMessage(response.content);
     }, 500);
+  };
+
+  const handleBackToChat = () => {
+    setIsMapFullscreen(false);
+    setNavigationMode('none');
+    setShowMapControls(false);
+  };
+
+  const toggleMapControls = () => {
+    setShowMapControls(!showMapControls);
   };
 
   if (showSplash) {
@@ -427,34 +433,110 @@ export const NavigationBot: React.FC = () => {
       {/* Fullscreen Map Modal */}
       {isMapFullscreen && showMap && (
         <div className="fixed inset-0 bg-black z-50 flex flex-col">
-          {/* Map Controls */}
-          <div className="absolute top-4 left-4 right-4 z-10 flex justify-between items-center">
-            <div className="flex space-x-2">
+          {/* Top Navigation Bar */}
+          <div className="absolute top-0 left-0 right-0 z-20 bg-black bg-opacity-80 backdrop-blur-sm">
+            <div className="flex items-center justify-between p-4">
+              {/* Back Button */}
               <button
-                onClick={toggleNavigationMode}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
-                  navigationMode === 'ar' 
-                    ? 'bg-green-500 text-white' 
-                    : navigationMode === 'split'
-                    ? 'bg-purple-500 text-white'
-                    : 'bg-blue-500 text-white'
-                }`}
+                onClick={handleBackToChat}
+                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all duration-200"
               >
-                {navigationMode === 'map' ? 'AR Mode' : 
-                 navigationMode === 'ar' ? 'Split View' : 'Map Mode'}
+                <ArrowLeft className="w-4 h-4" />
+                <span className="hidden sm:inline">{navState.language === 'tamil' ? 'திரும்பு' : 'Back'}</span>
+              </button>
+
+              {/* Mode Toggle */}
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={toggleNavigationMode}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+                    navigationMode === 'ar' 
+                      ? 'bg-green-500 text-white' 
+                      : navigationMode === 'split'
+                      ? 'bg-purple-500 text-white'
+                      : 'bg-blue-500 text-white'
+                  }`}
+                >
+                  {navigationMode === 'map' ? 'AR Mode' : 
+                   navigationMode === 'ar' ? 'Split View' : 'Map Mode'}
+                </button>
+                
+                {/* Map Controls Toggle */}
+                <button
+                  onClick={toggleMapControls}
+                  className="p-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg"
+                >
+                  <Settings className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Close Button */}
+              <button
+                onClick={() => setIsMapFullscreen(false)}
+                className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg"
+              >
+                <X className="w-5 h-5" />
               </button>
             </div>
-            
-            <button
-              onClick={() => setIsMapFullscreen(false)}
-              className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-full"
-            >
-              <X className="w-5 h-5" />
-            </button>
           </div>
 
+          {/* Map Controls Popup */}
+          {showMapControls && (
+            <div className="absolute top-20 right-4 z-30 bg-white rounded-lg shadow-xl p-4 min-w-48">
+              <div className="space-y-3">
+                <h3 className="font-semibold text-gray-800 text-sm">
+                  {navState.language === 'tamil' ? 'வரைபட கட்டுப்பாடுகள்' : 'Map Controls'}
+                </h3>
+                
+                <div className="space-y-2">
+                  <button
+                    onClick={() => setNavigationMode('map')}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
+                      navigationMode === 'map' 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'hover:bg-gray-100'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <Map className="w-4 h-4" />
+                      <span>{navState.language === 'tamil' ? 'வரைபட முறை' : 'Map Mode'}</span>
+                    </div>
+                  </button>
+                  
+                  <button
+                    onClick={() => setNavigationMode('ar')}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
+                      navigationMode === 'ar' 
+                        ? 'bg-green-100 text-green-700' 
+                        : 'hover:bg-gray-100'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <Camera className="w-4 h-4" />
+                      <span>{navState.language === 'tamil' ? 'AR முறை' : 'AR Mode'}</span>
+                    </div>
+                  </button>
+                  
+                  <button
+                    onClick={() => setNavigationMode('split')}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
+                      navigationMode === 'split' 
+                        ? 'bg-purple-100 text-purple-700' 
+                        : 'hover:bg-gray-100'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <Navigation className="w-4 h-4" />
+                      <span>{navState.language === 'tamil' ? 'பிரிப்பு காட்சி' : 'Split View'}</span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Navigation Content */}
-          <div className="flex-1 relative">
+          <div className="flex-1 relative pt-16">
             {navigationMode === 'map' && (
               <NavigationMap
                 selectedDestination={navState.selectedDestination}
@@ -475,8 +557,9 @@ export const NavigationBot: React.FC = () => {
             )}
             
             {navigationMode === 'split' && (
-              <div className="h-full flex flex-col">
-                <div className="flex-1">
+              <div className="h-full flex flex-col lg:flex-row">
+                {/* AR Camera Section */}
+                <div className="flex-1 relative">
                   <ARCamera
                     isActive={true}
                     onToggle={() => {}}
@@ -484,7 +567,9 @@ export const NavigationBot: React.FC = () => {
                     language={navState.language}
                   />
                 </div>
-                <div className="flex-1 border-t">
+                
+                {/* Map Section */}
+                <div className="flex-1 border-t lg:border-t-0 lg:border-l border-gray-300">
                   <NavigationMap
                     selectedDestination={navState.selectedDestination}
                     userLocation={userLocation}
