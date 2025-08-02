@@ -33,6 +33,7 @@ export const NavigationMap: React.FC<NavigationMapProps> = ({
   const instructionTriggerDistance = 20; // 20 meters trigger distance for waypoint instructions
   const totalDistanceRef = useRef<number>(0);
   const lastSpokenWaypointRef = useRef<number>(-1);
+  const hasInitialNavigationMessageRef = useRef<boolean>(false);
   const routeDeviationThreshold = 50; // 50 meters - recalculate route if user deviates
   const lastRouteRecalculationRef = useRef<number>(0);
 
@@ -143,13 +144,14 @@ export const NavigationMap: React.FC<NavigationMapProps> = ({
     
     console.log(`Starting GPS navigation with ${routeInstructionsRef.current.length} instructions, ${routeWaypointsRef.current.length} waypoints, total distance: ${totalDistance}m`);
     
-    // Send initial navigation start message
-    if (onNavigationInstruction) {
+    // Send initial navigation start message only if this is a new route
+    if (onNavigationInstruction && !hasInitialNavigationMessageRef.current) {
       const startMessage = `Navigation started. Total distance: ${totalDistance > 1000 
         ? `${(totalDistance / 1000).toFixed(1)} kilometers`
         : `${Math.round(totalDistance)} meters`}. Follow the blue line on the map.`;
       console.log('Sending initial navigation message:', startMessage);
       onNavigationInstruction(startMessage, totalDistance);
+      hasInitialNavigationMessageRef.current = true;
     }
     
     // GPS-style instructions will be triggered when user reaches waypoints
@@ -552,42 +554,7 @@ export const NavigationMap: React.FC<NavigationMapProps> = ({
     };
   }, []);
 
-  useEffect(() => {
-    if (!mapInstanceRef.current || !userLocation) return;
 
-    const L = (window as any).L;
-    
-    // Update user marker with provided location
-    if (userMarkerRef.current) {
-      mapInstanceRef.current.removeLayer(userMarkerRef.current);
-    }
-    
-    userMarkerRef.current = L.circleMarker([userLocation.lat, userLocation.lng], {
-      radius: 8,
-      fillColor: 'blue',
-      color: '#000',
-      weight: 1,
-      opacity: 1,
-      fillOpacity: 0.8
-    }).addTo(mapInstanceRef.current)
-      .bindPopup("You are here")
-      .openPopup();
-
-    // Check for GPS navigation waypoint instructions
-    if (selectedDestination && routeInstructionsRef.current.length > 0) {
-      const userLatLng = L.latLng(userLocation.lat, userLocation.lng);
-      
-      // First check if user has deviated from route
-      const hasDeviated = checkRouteDeviation(userLatLng);
-      
-      // Only check waypoint instructions if not recalculating route
-      if (!hasDeviated) {
-        checkWaypointInstruction(userLatLng);
-        provideNavigationFeedback(userLatLng);
-      }
-    }
-
-  }, [userLocation]);
 
   useEffect(() => {
     if (!mapInstanceRef.current || !selectedDestination) return;
@@ -623,6 +590,11 @@ export const NavigationMap: React.FC<NavigationMapProps> = ({
     
     // Log distance for debugging (removed 5km limit)
     console.log(`Distance to destination: ${distance}m`);
+
+    // Reset navigation state for new destination
+    hasInitialNavigationMessageRef.current = false;
+    currentInstructionIndexRef.current = 0;
+    lastSpokenWaypointRef.current = -1;
 
     // Safely remove existing route with proper cleanup
     if (routeControlRef.current) {
@@ -747,7 +719,33 @@ export const NavigationMap: React.FC<NavigationMapProps> = ({
     });
     }, 100); // Small delay to ensure cleanup is complete
 
-  }, [selectedDestination, userLocation, onRouteCalculated]);
+  }, [selectedDestination, onRouteCalculated]); // Removed userLocation to prevent constant recalculations
+
+  // Separate effect to handle user location updates for navigation instructions
+  useEffect(() => {
+    if (!mapInstanceRef.current || !userLocation || !selectedDestination) return;
+
+    const L = (window as any).L;
+    const userLatLng = L.latLng(userLocation.lat, userLocation.lng);
+    
+    // Update user marker position
+    if (userMarkerRef.current) {
+      userMarkerRef.current.setLatLng(userLatLng);
+    }
+    
+    // Check for GPS navigation waypoint instructions
+    if (routeInstructionsRef.current.length > 0) {
+      // First check if user has deviated from route
+      const hasDeviated = checkRouteDeviation(userLatLng);
+      
+      // Only check waypoint instructions if not recalculating route
+      if (!hasDeviated) {
+        checkWaypointInstruction(userLatLng);
+        provideNavigationFeedback(userLatLng);
+      }
+    }
+
+  }, [userLocation, selectedDestination]);
 
   // Cleanup effect when destination changes
   useEffect(() => {

@@ -23,7 +23,7 @@ export const NavigationBot: React.FC = () => {
     isListening: false,
     isSpeaking: false,
     isMuted: false,
-    language: 'tamil', // Default to Tamil as requested
+    language: 'english', // Default to English
     isARMode: false,
     cameraPermission: false
   });
@@ -300,7 +300,8 @@ export const NavigationBot: React.FC = () => {
       // But allow initial navigation messages to speak immediately
       const isInitialNavigation = instruction.includes('Navigation started') || instruction.includes('Total distance');
       const timeSinceLastSpeech = now - lastSpeechTime;
-      const shouldSpeak = isInitialNavigation || (instruction !== lastSpokenInstruction && timeSinceLastSpeech > 2000);
+      const isDuplicateInstruction = instruction === lastSpokenInstruction;
+      const shouldSpeak = isInitialNavigation || (!isDuplicateInstruction && timeSinceLastSpeech > 2000);
       
       if (shouldSpeak) {
         setLastSpokenInstruction(instruction);
@@ -309,9 +310,13 @@ export const NavigationBot: React.FC = () => {
         console.log('Speaking instruction with priority:', isInitialNavigation ? 2 : 1, 'text:', instruction);
         speakMessage(response.content, isInitialNavigation ? 2 : 1); // Higher priority for initial messages
       } else {
-        // Still add to chat but don't speak
-        console.log('Not speaking instruction (cooldown or duplicate):', instruction);
-        addMessage('bot', instruction);
+        // Don't add duplicate instructions to chat either
+        if (!isDuplicateInstruction) {
+          console.log('Not speaking instruction (cooldown):', instruction);
+          addMessage('bot', instruction);
+        } else {
+          console.log('Skipping duplicate instruction:', instruction);
+        }
       }
     }
   };
