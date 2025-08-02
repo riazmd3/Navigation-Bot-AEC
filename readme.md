@@ -10,5 +10,5 @@ Mobile-first responsive design
 Language toggle between Tamil and English
 Smooth animations and transitions
 Professional college branding
-Convenient to use
+Convenient to user
 -----
