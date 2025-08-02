@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { MapPin, Navigation } from 'lucide-react';
 import { buildings } from '../data/campus';
+import { CustomLocationsManager } from '../utils/customLocations';
 
 interface NavigationMapProps {
   selectedDestination: string | null;
@@ -333,6 +334,42 @@ export const NavigationMap: React.FC<NavigationMapProps> = ({
         .bindPopup(`<b>${building.name}</b><br/>${building.description || ''}`);
     });
 
+    // Add custom location markers
+    const customLocationsManager = CustomLocationsManager.getInstance();
+    const customLocations = customLocationsManager.getCustomLocationsAsBuildings();
+    Object.entries(customLocations).forEach(([key, location]) => {
+      const marker = L.marker([location.lat, location.lng], {
+        icon: L.divIcon({
+          className: 'custom-location-marker',
+          html: `<div style="
+            width: 20px; 
+            height: 20px; 
+            background: #ec4899; 
+            border: 3px solid white; 
+            border-radius: 50%; 
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            position: relative;
+          ">
+            <div style="
+              position: absolute;
+              top: -4px;
+              left: 50%;
+              transform: translateX(-50%);
+              width: 0;
+              height: 0;
+              border-left: 3px solid transparent;
+              border-right: 3px solid transparent;
+              border-bottom: 6px solid #ec4899;
+            "></div>
+          </div>`,
+          iconSize: [20, 20],
+          iconAnchor: [10, 10]
+        })
+      })
+        .addTo(map)
+        .bindPopup(`<b>${location.name}</b><br/><small>Event Location</small><br/>${location.description || ''}`);
+    });
+
     mapInstanceRef.current = map;
 
     // Auto-detect user location with continuous tracking
@@ -444,7 +481,10 @@ export const NavigationMap: React.FC<NavigationMapProps> = ({
         return;
       }
       
-      const target = buildings[selectedDestination!];
+      // Check if it's a custom location first
+      const customLocationsManager = CustomLocationsManager.getInstance();
+      const customLocations = customLocationsManager.getCustomLocationsAsBuildings();
+      const target = buildings[selectedDestination!] || customLocations[selectedDestination!];
       if (!target) return;
       
       // Remove existing route
@@ -558,7 +598,10 @@ export const NavigationMap: React.FC<NavigationMapProps> = ({
       return;
     }
     
-    const target = buildings[selectedDestination];
+    // Check if it's a custom location first
+    const customLocationsManager = CustomLocationsManager.getInstance();
+    const customLocations = customLocationsManager.getCustomLocationsAsBuildings();
+    let target = buildings[selectedDestination] || customLocations[selectedDestination];
     
     if (!target) return;
 

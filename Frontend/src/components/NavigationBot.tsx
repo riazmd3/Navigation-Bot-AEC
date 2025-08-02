@@ -6,9 +6,11 @@ import { DestinationGrid } from './DestinationGrid';
 import { NavigationMap } from './NavigationMap';
 import { ARCamera } from './ARCamera';
 import { SplashScreen } from './SplashScreen';
+import { SettingsModal } from './SettingsModal';
 import { SpeechManager } from '../utils/speech';
 import { getTranslation } from '../utils/translations';
 import { buildings } from '../data/campus';
+import { CustomLocationsManager } from '../utils/customLocations';
 import { ChatMessage, NavigationState } from '../types';
 
 export const NavigationBot: React.FC = () => {
@@ -34,6 +36,7 @@ export const NavigationBot: React.FC = () => {
   const [lastSpokenInstruction, setLastSpokenInstruction] = useState<string>('');
   const [lastSpeechTime, setLastSpeechTime] = useState<number>(0);
   const [showMapControls, setShowMapControls] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   
   const speechManagerRef = useRef<SpeechManager | null>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -189,8 +192,19 @@ export const NavigationBot: React.FC = () => {
     speechManagerRef.current?.stopSpeaking();
     speechManagerRef.current?.stopListening();
     
+    // Check if it's a regular building or custom location
     const building = buildings[destinationKey];
-    if (!building) return;
+    const customLocationsManager = CustomLocationsManager.getInstance();
+    const customLocations = customLocationsManager.getCustomLocationsAsBuildings();
+    const customLocation = customLocations[destinationKey];
+    
+    // Use building or custom location data
+    const destinationData = building || customLocation;
+    if (!destinationData) {
+      console.log('Destination not found:', destinationKey);
+      setIsProcessing(false);
+      return;
+    }
 
     setNavState(prev => ({ 
       ...prev, 
@@ -201,8 +215,8 @@ export const NavigationBot: React.FC = () => {
     }));
 
     const response = addMessage('bot', getTranslation('calculating', navState.language, {
-      destination: navState.language === 'tamil' ? building.name : (building.englishName || building.name),
-      description: building.description || ''
+      destination: navState.language === 'tamil' ? destinationData.name : (destinationData.englishName || destinationData.name),
+      description: destinationData.description || ''
     })
     );
     
@@ -381,8 +395,18 @@ export const NavigationBot: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 relative">
-      {/* Language Toggle - Top Right */}
-      <div className="fixed top-4 right-4 z-40">
+      {/* Top Right Controls */}
+      <div className="fixed top-4 right-4 z-40 flex items-center space-x-2">
+        {/* Settings Button */}
+        <button
+          onClick={() => setShowSettings(true)}
+          className="flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 transform hover:scale-105 shadow-lg bg-gradient-to-r from-gray-600 to-gray-700 text-white"
+        >
+          <Settings className="w-4 h-4" />
+          <span className="hidden sm:inline">{navState.language === 'tamil' ? 'அமைப்புகள்' : 'Settings'}</span>
+        </button>
+        
+        {/* Language Toggle */}
         <button
           onClick={toggleLanguage}
           className={`flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 transform hover:scale-105 shadow-lg ${
@@ -738,6 +762,13 @@ export const NavigationBot: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        language={navState.language}
+      />
     </div>
   );
 };
