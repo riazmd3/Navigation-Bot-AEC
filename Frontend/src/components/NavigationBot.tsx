@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Mic, MicOff, Volume2, VolumeX, MapPin, Navigation, Clock, Globe, Camera, X, Maximize2, ArrowLeft, Settings, Map } from 'lucide-react';
-import { Avatar3D } from './Avatar3D';
+import { BotAnimation } from './BotAnimation';
 import { ChatBubble } from './ChatBubble';
 import { DestinationGrid } from './DestinationGrid';
 import { NavigationMap } from './NavigationMap';
@@ -869,14 +869,13 @@ export const NavigationBot: React.FC = () => {
               </div>
             )}
             
-            {/* Character Overlay */}
+            {/* Bot Character Overlay */}
             <div className="absolute top-20 left-4 z-10">
-              <Avatar3D 
+              <BotAnimation 
                 isSpeaking={navState.isSpeaking}
                 isListening={navState.isListening}
                 isNavigating={true}
-                language={navState.language}
-                className="scale-75"
+                size="small"
               />
             </div>
           </div>
@@ -887,14 +886,14 @@ export const NavigationBot: React.FC = () => {
         <div className="grid gap-6 lg:grid-cols-1">
           {/* Chat Interface */}
           <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-            {/* Avatar Section */}
-            <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6 text-center">
-              <Avatar3D 
+            {/* Bot Avatar Section */}
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-8 text-center">
+              <BotAnimation 
                 isSpeaking={navState.isSpeaking}
                 isListening={navState.isListening}
                 isNavigating={navState.currentStep === 'navigating'}
-                language={navState.language}
-                className="mx-auto mb-4"
+                className="mx-auto mb-6"
+                size="large"
               />
               <h2 className="text-xl font-semibold text-white">
                 {navState.language === 'tamil' ? 'கல்லூரி வழிகாட்டி' : 'Campus Guide Assistant'}
@@ -911,7 +910,7 @@ export const NavigationBot: React.FC = () => {
             {/* Chat Messages */}
             <div 
               ref={chatContainerRef}
-              className="h-48 md:h-64 overflow-y-auto p-4 space-y-4 bg-gray-50"
+              className="h-64 md:h-80 overflow-y-auto p-4 space-y-4 bg-gray-50"
             >
               {messages.map((message, idx) => (
                 <ChatBubble key={message.id || `msg-${idx}-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`} message={message} />
@@ -963,16 +962,16 @@ export const NavigationBot: React.FC = () => {
                   </button>
                 </div>
                 
-                {showCustomRoutes ? (
-                  <div className="max-h-48 md:max-h-64 overflow-y-auto">
-                                         <CustomRoutesGrid
-                       onSelectRoute={handleCustomRouteSelect}
-                       selectedRouteId={selectedCustomRoute || undefined}
-                       language={navState.language}
-                     />
+                                {showCustomRoutes ? (
+                  <div className="max-h-64 md:max-h-80 overflow-y-auto">
+                    <CustomRoutesGrid
+                      onSelectRoute={handleCustomRouteSelect}
+                      selectedRouteId={selectedCustomRoute || undefined}
+                      language={navState.language}
+                    />
                   </div>
                 ) : (
-                  <div className="max-h-48 md:max-h-64 overflow-y-auto">
+                  <div className="max-h-64 md:max-h-80 overflow-y-auto">
                     <DestinationGrid
                       onSelectDestination={handleDestinationSelect}
                       selectedDestination={navState.selectedDestination}
