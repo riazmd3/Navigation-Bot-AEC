@@ -883,7 +883,7 @@ export const NavigationBot: React.FC = () => {
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto px-4 py-6 relative z-20">
+      <div className="max-w-7xl mx-auto px-4 py-6 pb-24 relative z-20">
         <div className="grid gap-6 lg:grid-cols-1">
           {/* Chat Interface */}
           <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
@@ -932,51 +932,17 @@ export const NavigationBot: React.FC = () => {
                   </button>
                 )}
               </div>
-              
-              <div className="flex items-center justify-center space-x-3">
-                <button
-                  onClick={startListening}
-                  disabled={navState.isListening || navState.isSpeaking || isProcessing}
-                  className={`
-                    p-3 md:p-4 rounded-full transition-all duration-300 transform hover:scale-110 shadow-lg font-medium
-                    ${navState.isListening 
-                      ? 'bg-gradient-to-r from-red-500 to-pink-500 text-white animate-pulse' 
-                      : 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white hover:from-blue-600 hover:to-indigo-600'
-                    }
-                    disabled:opacity-50 disabled:cursor-not-allowed
-                  `}
-                >
-                  {navState.isListening ? <MicOff className="w-4 h-4 md:w-5 md:h-5" /> : <Mic className="w-4 h-4 md:w-5 md:h-5" />}
-                </button>
-                
-                {/* Language Toggle */}
-                <button
-                  onClick={toggleLanguage}
-                  className="px-3 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-full text-xs font-medium transition-all duration-300"
-                >
-                  {navState.language === 'tamil' ? 'EN' : 'தமிழ்'}
-                </button>
-                
-                <button
-                  onClick={toggleMute}
-                  className={`p-3 md:p-4 rounded-full transition-all duration-300 transform hover:scale-110 shadow-lg ${
-                    navState.isMuted 
-                      ? 'bg-gradient-to-r from-red-500 to-red-600 text-white' 
-                      : 'bg-gradient-to-r from-gray-500 to-gray-600 text-white hover:from-gray-600 hover:to-gray-700'
-                  }`}
-                >
-                  {navState.isMuted ? <VolumeX className="w-4 h-4 md:w-5 md:h-5" /> : <Volume2 className="w-4 h-4 md:w-5 md:h-5" />}
-                </button>
 
-                {navState.selectedDestination && (
+              {navState.selectedDestination && (
+                <div className="flex items-center justify-center space-x-3">
                   <button
                     onClick={handleDestinationCancel}
                     className="px-4 md:px-6 py-2 md:py-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-full text-xs md:text-sm font-medium transition-all duration-300 transform hover:scale-105 shadow-lg"
                   >
                     {getTranslation('newDestination', navState.language)}
                   </button>
-                )}
-              </div>
+                </div>
+              )}
             </div>
 
             {/* Destination Selection */}
@@ -1110,6 +1076,47 @@ export const NavigationBot: React.FC = () => {
           }
           return null;
         })()}
+
+        {/* Fixed Bottom Action Buttons */}
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg">
+          <div className="flex items-center justify-between px-6 py-4 max-w-7xl mx-auto">
+            {/* Left: Language Toggle */}
+            <button
+              onClick={toggleLanguage}
+              className="px-4 py-3 bg-purple-500 hover:bg-purple-600 text-white rounded-full text-sm font-medium transition-all duration-300 shadow-lg hover:scale-105"
+            >
+              {navState.language === 'tamil' ? 'EN' : 'தமிழ்'}
+            </button>
+
+            {/* Center: Microphone Button */}
+            <button
+              onClick={startListening}
+              disabled={navState.isListening || navState.isSpeaking || isProcessing}
+              className={`
+                p-4 md:p-5 rounded-full transition-all duration-300 transform hover:scale-110 shadow-xl font-medium
+                ${navState.isListening 
+                  ? 'bg-gradient-to-r from-red-500 to-pink-500 text-white animate-pulse' 
+                  : 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white hover:from-blue-600 hover:to-indigo-600'
+                }
+                disabled:opacity-50 disabled:cursor-not-allowed
+              `}
+            >
+              {navState.isListening ? <MicOff className="w-6 h-6 md:w-7 md:h-7" /> : <Mic className="w-6 h-6 md:w-7 md:h-7" />}
+            </button>
+
+            {/* Right: Speaker/Mute Button */}
+            <button
+              onClick={toggleMute}
+              className={`p-4 md:p-5 rounded-full transition-all duration-300 transform hover:scale-110 shadow-xl ${
+                navState.isMuted 
+                  ? 'bg-gradient-to-r from-red-500 to-red-600 text-white' 
+                  : 'bg-gradient-to-r from-gray-500 to-gray-600 text-white hover:from-gray-600 hover:to-gray-700'
+              }`}
+            >
+              {navState.isMuted ? <VolumeX className="w-6 h-6 md:w-7 md:h-7" /> : <Volume2 className="w-6 h-6 md:w-7 md:h-7" />}
+            </button>
+          </div>
+        </div>
       </div>
     );
   };
