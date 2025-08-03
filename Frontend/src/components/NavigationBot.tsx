@@ -10,6 +10,8 @@ import { SettingsModal } from './SettingsModal';
 import { LocationErrorModal } from './LocationErrorModal';
 import { LocationNotification } from './LocationNotification';
 import { NavigationStatus } from './NavigationStatus';
+import { DestinationImage } from './DestinationImage';
+import { CustomRoutesGrid } from './CustomRoutesGrid';
 import { SpeechManager } from '../utils/speech';
 import { LocationService, LocationErrorType } from '../utils/locationService';
 import { getTranslation } from '../utils/translations';
@@ -53,6 +55,10 @@ export const NavigationBot: React.FC = () => {
     type: 'cancelled' | 'new-destination' | 'calculating' | 'error';
     message: string;
   } | null>(null);
+  
+  const [showDestinationImage, setShowDestinationImage] = useState(false);
+  const [showCustomRoutes, setShowCustomRoutes] = useState(false);
+  const [selectedCustomRoute, setSelectedCustomRoute] = useState<string | null>(null);
   
   const speechManagerRef = useRef<SpeechManager | null>(null);
   const locationServiceRef = useRef<LocationService | null>(null);
@@ -230,6 +236,11 @@ export const NavigationBot: React.FC = () => {
       console.log('Destination not found:', destinationKey);
       setIsProcessing(false);
       return;
+    }
+
+    // Show destination image if available
+    if (destinationData.image) {
+      setShowDestinationImage(true);
     }
 
     // Show calculating status
@@ -502,10 +513,10 @@ export const NavigationBot: React.FC = () => {
       speakMessage(message.content);
     }, 300);
     
-    // Hide navigation status after 3 seconds
+    // Hide navigation status after 2 seconds
     setTimeout(() => {
       setNavigationStatus(null);
-    }, 3000);
+    }, 2000);
   };
 
   const handleBackToChat = () => {
@@ -615,6 +626,29 @@ export const NavigationBot: React.FC = () => {
 
   const closeLocationNotification = () => {
     setLocationNotification(null);
+  };
+
+  const handleCustomRouteSelect = (route: any) => {
+    setSelectedCustomRoute(route.id);
+    setShowCustomRoutes(false);
+    
+    // Add message about custom route
+    const routeMessage = navState.language === 'tamil'
+      ? `தனிப்பயன் வழி தேர்ந்தெடுக்கப்பட்டது: ${route.name}`
+      : `Custom route selected: ${route.name}`;
+    
+    const message = addMessage('bot', routeMessage);
+    speakMessage(message.content);
+    
+    // Show route details
+    const detailsMessage = navState.language === 'tamil'
+      ? `தூரம்: ${route.distance} மீட்டர், நேரம்: ${route.estimatedTime} நிமிடங்கள்`
+      : `Distance: ${route.distance}m, Time: ${route.estimatedTime} minutes`;
+    
+    setTimeout(() => {
+      const detailsMsg = addMessage('bot', detailsMessage);
+      speakMessage(detailsMsg.content);
+    }, 1000);
   };
 
 
@@ -915,15 +949,12 @@ export const NavigationBot: React.FC = () => {
                   {navState.isListening ? <MicOff className="w-4 h-4 md:w-5 md:h-5" /> : <Mic className="w-4 h-4 md:w-5 md:h-5" />}
                 </button>
                 
-                {/* Debug button for testing routing */}
+                {/* Language Toggle */}
                 <button
-                  onClick={() => {
-                    console.log('Testing routing with destination: gate');
-                    handleDestinationSelect('gate');
-                  }}
-                  className="px-3 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-full text-xs font-medium transition-all duration-300"
+                  onClick={toggleLanguage}
+                  className="px-3 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-full text-xs font-medium transition-all duration-300"
                 >
-                  Test Route
+                  {navState.language === 'tamil' ? 'EN' : 'தமிழ்'}
                 </button>
                 
                 <button
@@ -951,16 +982,38 @@ export const NavigationBot: React.FC = () => {
             {/* Destination Selection */}
             {!navState.selectedDestination && (
               <div className="p-4 border-t bg-gray-50">
-                <h3 className="font-semibold text-gray-800 mb-4">
-                  {getTranslation('selectDestination', navState.language)}
-                </h3>
-                <div className="max-h-48 md:max-h-64 overflow-y-auto">
-                  <DestinationGrid
-                    onSelectDestination={handleDestinationSelect}
-                    selectedDestination={navState.selectedDestination}
-                    language={navState.language}
-                  />
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-gray-800">
+                    {getTranslation('selectDestination', navState.language)}
+                  </h3>
+                  <button
+                    onClick={() => setShowCustomRoutes(!showCustomRoutes)}
+                    className="px-3 py-1 bg-purple-500 hover:bg-purple-600 text-white rounded-full text-xs font-medium transition-all duration-300"
+                  >
+                    {showCustomRoutes 
+                      ? (navState.language === 'tamil' ? 'வழக்கமான இடங்கள்' : 'Regular Places')
+                      : (navState.language === 'tamil' ? 'தனிப்பயன் வழிகள்' : 'Custom Routes')
+                    }
+                  </button>
                 </div>
+                
+                {showCustomRoutes ? (
+                  <div className="max-h-48 md:max-h-64 overflow-y-auto">
+                                         <CustomRoutesGrid
+                       onSelectRoute={handleCustomRouteSelect}
+                       selectedRouteId={selectedCustomRoute || undefined}
+                       language={navState.language}
+                     />
+                  </div>
+                ) : (
+                  <div className="max-h-48 md:max-h-64 overflow-y-auto">
+                    <DestinationGrid
+                      onSelectDestination={handleDestinationSelect}
+                      selectedDestination={navState.selectedDestination}
+                      language={navState.language}
+                    />
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1034,6 +1087,29 @@ export const NavigationBot: React.FC = () => {
             onClose={() => setNavigationStatus(null)}
           />
         )}
+        
+        {/* Destination Image */}
+        {showDestinationImage && navState.selectedDestination && (() => {
+          const building = buildings[navState.selectedDestination];
+          const customLocationsManager = CustomLocationsManager.getInstance();
+          const customLocations = customLocationsManager.getCustomLocationsAsBuildings();
+          const customLocation = customLocations[navState.selectedDestination];
+          const destinationData = building || customLocation;
+          
+          if (destinationData?.image) {
+            return (
+              <DestinationImage
+                imageUrl={destinationData.image}
+                destinationName={destinationData.name}
+                englishName={destinationData.englishName}
+                description={destinationData.description}
+                language={navState.language}
+                onClose={() => setShowDestinationImage(false)}
+              />
+            );
+          }
+          return null;
+        })()}
       </div>
     );
   };

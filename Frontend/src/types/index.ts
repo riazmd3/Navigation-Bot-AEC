@@ -4,6 +4,7 @@ export interface Building {
   lat: number;
   lng: number;
   description?: string;
+  image?: string;
 }
 
 export interface Buildings {

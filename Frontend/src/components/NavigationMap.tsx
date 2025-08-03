@@ -396,7 +396,7 @@ export const NavigationMap: React.FC<NavigationMapProps> = ({
     // Auto-detect user location with continuous tracking
     const startLocationTracking = () => {
       map.locate({ 
-        setView: true,
+        setView: false, // Don't auto-center on location
         maxZoom: 20,
         timeout: 10000,
         maximumAge: 15000, // 15 seconds to reduce frequent updates
@@ -460,8 +460,10 @@ export const NavigationMap: React.FC<NavigationMapProps> = ({
         .addTo(map)
         .bindPopup("You are here");
       
-      // Keep map centered on user with smooth animation
-      map.setView(detectedLocation, 20, { animate: true, duration: 0.5 });
+      // Only center on user if no destination is selected and it's the first location detection
+      if (!selectedDestination && !userLocation) {
+        map.setView(detectedLocation, 18, { animate: true, duration: 0.5 });
+      }
       
       // Notify parent component of location update
       if (onLocationUpdate) {

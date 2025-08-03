@@ -6,14 +6,16 @@ export const buildings: Buildings = {
     englishName: "Gate", 
     lat: 12.193100, 
     lng: 79.084515, 
-    description: "கல்லூரியின் முக்கிய நுழைவாயில்" 
+    description: "கல்லூரியின் முக்கிய நுழைவாயில்",
+    image: "/Images/Arunai-Gateway.jpg"
   },
   center: { 
     name: "அருணை மையம்", 
     englishName: "Arunai Center", 
     lat: 12.192708, 
     lng: 79.083666, 
-    description: "மைய நிர்வாக கட்டிடம்" 
+    description: "மைய நிர்வாக கட்டிடம்",
+    image: "/Images/arunai center jpeg.jpeg"
   },
   gateway: { 
     name: "அருணை நுழைவாயில்", 
@@ -83,7 +85,8 @@ export const buildings: Buildings = {
     englishName: "Mechanical Dept", 
     lat: 12.193446, 
     lng: 79.082622, 
-    description: "இயந்திர பொறியியல் துறை" 
+    description: "இயந்திர பொறியியல் துறை",
+    image: "/Images/mechanical block.jpg"
   },
   civil: { 
     name: "சிவில் பொறியியல் துறை", 
@@ -125,21 +128,24 @@ export const buildings: Buildings = {
     englishName: "ECE Block", 
     lat: 12.192571, 
     lng: 79.082783, 
-    description: "மின்னணு மற்றும் தொடர்பு துறை" 
+    description: "மின்னணு மற்றும் தொடர்பு துறை",
+    image: "/Images/ECE Block.jpeg"
   },
   eee: { 
     name: "மின் மற்றும் மின்னணு துறை", 
     englishName: "EEE Block", 
     lat: 12.193138, 
     lng: 79.083092, 
-    description: "மின் மற்றும் மின்னணு துறை" 
+    description: "மின் மற்றும் மின்னணு துறை",
+    image: "/Images/EEE BLOCK.jpeg"
   },
   cse: { 
     name: "கணினி அறிவியல் துறை", 
     englishName: "CSE Block", 
     lat: 12.192838, 
     lng: 79.083230, 
-    description: "கணினி அறிவியல் துறை" 
+    description: "கணினி அறிவியல் துறை",
+    image: "/Images/cse block.jpeg"
   },
   has: { 
     name: "மானுடவியல் மற்றும் அறிவியல் துறை", 
@@ -174,7 +180,8 @@ export const buildings: Buildings = {
     englishName: "Library",
     lat: 12.192500,
     lng: 79.083500,
-    description: "கல்லூரி நூலகம் மற்றும் வாசிப்பு அரங்கம்"
+    description: "கல்லூரி நூலகம் மற்றும் வாசிப்பு அரங்கம்",
+    image: "/Images/library.jpeg"
   },
   lab: {
     name: "ஆய்வகம்",
