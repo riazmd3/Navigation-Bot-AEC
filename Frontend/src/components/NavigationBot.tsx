@@ -7,7 +7,11 @@ import { NavigationMap } from './NavigationMap';
 import { ARCamera } from './ARCamera';
 import { SplashScreen } from './SplashScreen';
 import { SettingsModal } from './SettingsModal';
+import { LocationErrorModal } from './LocationErrorModal';
+import { LocationNotification } from './LocationNotification';
+import { NavigationStatus } from './NavigationStatus';
 import { SpeechManager } from '../utils/speech';
+import { LocationService, LocationErrorType } from '../utils/locationService';
 import { getTranslation } from '../utils/translations';
 import { buildings } from '../data/campus';
 import { CustomLocationsManager } from '../utils/customLocations';
@@ -37,8 +41,21 @@ export const NavigationBot: React.FC = () => {
   const [lastSpeechTime, setLastSpeechTime] = useState<number>(0);
   const [showMapControls, setShowMapControls] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [locationError, setLocationError] = useState<{ type: LocationErrorType; isOpen: boolean } | null>(null);
+  const [locationNotification, setLocationNotification] = useState<{
+    message: string;
+    type: 'success' | 'error' | 'warning' | 'info';
+    isVisible: boolean;
+  } | null>(null);
+  
+  const [navigationStatus, setNavigationStatus] = useState<{
+    isVisible: boolean;
+    type: 'cancelled' | 'new-destination' | 'calculating' | 'error';
+    message: string;
+  } | null>(null);
   
   const speechManagerRef = useRef<SpeechManager | null>(null);
+  const locationServiceRef = useRef<LocationService | null>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -47,6 +64,9 @@ export const NavigationBot: React.FC = () => {
     speechManagerRef.current = new SpeechManager();
     speechManagerRef.current.setLanguage(navState.language);
     speechManagerRef.current.setDistanceThreshold(10); // Set 10 meter threshold
+    
+    // Initialize location service
+    locationServiceRef.current = LocationService.getInstance();
     
     // Use default campus center location (will be updated by map's location detection)
     setUserLocation({ lat: 12.192850, lng: 79.083730 });
@@ -188,9 +208,15 @@ export const NavigationBot: React.FC = () => {
     
     setIsProcessing(true);
     
-    // Stop any current speech
+    // Stop any current speech and clear queue immediately
     speechManagerRef.current?.stopSpeaking();
+    speechManagerRef.current?.clearQueue();
     speechManagerRef.current?.stopListening();
+    
+    // Clear any ongoing navigation state
+    setCurrentInstruction('');
+    setLastSpokenInstruction('');
+    setLastSpeechTime(0);
     
     // Check if it's a regular building or custom location
     const building = buildings[destinationKey];
@@ -206,6 +232,15 @@ export const NavigationBot: React.FC = () => {
       return;
     }
 
+    // Show calculating status
+    setNavigationStatus({
+      isVisible: true,
+      type: 'calculating',
+      message: navState.language === 'tamil' 
+        ? 'வழி கணக்கிடப்படுகிறது...'
+        : 'Calculating route...'
+    });
+    
     setNavState(prev => ({ 
       ...prev, 
       selectedDestination: destinationKey,
@@ -248,6 +283,9 @@ export const NavigationBot: React.FC = () => {
   const handleRouteCalculated = (distance: number, duration: number) => {
     setRouteInfo({ distance, duration });
     
+    // Hide calculating status
+    setNavigationStatus(null);
+    
     const distanceText = distance > 1000 
       ? `${(distance / 1000).toFixed(1)} kilometers`
       : `${Math.round(distance)} meters`;
@@ -268,8 +306,23 @@ export const NavigationBot: React.FC = () => {
   const handleNavigationInstruction = (instruction: string, distance?: number) => {
     const now = Date.now();
     
-    // Check for location/range errors or routing service issues
-    if (instruction.includes('too far') || instruction.includes('check your location') || instruction.includes('routing service issue')) {
+    // Check if navigation has been cancelled - don't process instructions if no destination is selected
+    if (!navState.selectedDestination) {
+      console.log('Navigation cancelled, ignoring instruction:', instruction);
+      return;
+    }
+    
+    // Check for specific location error types
+    if (instruction.includes('Location permission denied')) {
+      handleLocationError('permission');
+      return;
+    } else if (instruction.includes('Location service unavailable')) {
+      handleLocationError('unavailable');
+      return;
+    } else if (instruction.includes('Location detection timed out')) {
+      handleLocationError('timeout');
+      return;
+    } else if (instruction.includes('too far') || instruction.includes('check your location') || instruction.includes('routing service issue')) {
       const errorMessage = navState.language === 'tamil' 
         ? instruction.includes('routing service issue') 
           ? 'வழிசெலுத்தல் சேவையில் சிக்கல் உள்ளது. நேரடி பாதையைப் பயன்படுத்துகிறேன்.'
@@ -322,9 +375,15 @@ export const NavigationBot: React.FC = () => {
   };
 
   const resetToHome = () => {
-    // Stop all current operations
+    // Stop all current operations and clear speech queue
     speechManagerRef.current?.stopSpeaking();
+    speechManagerRef.current?.clearQueue();
     speechManagerRef.current?.stopListening();
+    
+    // Clear any ongoing navigation state
+    setCurrentInstruction('');
+    setLastSpokenInstruction('');
+    setLastSpeechTime(0);
     
     // Clear all states
     setIsProcessing(false);
@@ -361,6 +420,16 @@ export const NavigationBot: React.FC = () => {
   };
 
   const resetNavigation = () => {
+    // Immediately stop all speech and clear queue
+    speechManagerRef.current?.stopSpeaking();
+    speechManagerRef.current?.clearQueue();
+    speechManagerRef.current?.stopListening();
+    
+    // Clear any ongoing navigation state
+    setCurrentInstruction('');
+    setLastSpokenInstruction('');
+    setLastSpeechTime(0);
+    
     setNavState(prev => ({
       currentStep: 'welcome',
       selectedDestination: null,
@@ -384,6 +453,61 @@ export const NavigationBot: React.FC = () => {
     }, 500);
   };
 
+  // New function to handle destination cancellation with better speech management
+  const handleDestinationCancel = () => {
+    // Immediately stop all speech and clear queue
+    speechManagerRef.current?.stopSpeaking();
+    speechManagerRef.current?.clearQueue();
+    speechManagerRef.current?.stopListening();
+    
+    // Clear any ongoing navigation state
+    setCurrentInstruction('');
+    setLastSpokenInstruction('');
+    setLastSpeechTime(0);
+    
+    // Add cancellation message
+    const cancelMessage = navState.language === 'tamil' 
+      ? 'வழிசெலுத்தல் ரத்து செய்யப்பட்டது. புதிய இலக்கைத் தேர்ந்தெடுக்கலாம்.'
+      : 'Navigation cancelled. You can select a new destination.';
+    
+    const message = addMessage('bot', cancelMessage);
+    
+    // Show navigation status
+    setNavigationStatus({
+      isVisible: true,
+      type: 'cancelled',
+      message: navState.language === 'tamil' 
+        ? 'வழிசெலுத்தல் ரத்து செய்யப்பட்டது'
+        : 'Navigation Cancelled'
+    });
+    
+    setNavState(prev => ({
+      currentStep: 'welcome',
+      selectedDestination: null,
+      isListening: false,
+      isSpeaking: false,
+      isMuted: navState.isMuted,
+      language: navState.language,
+      isARMode: false,
+      cameraPermission: false
+    }));
+    setShowMap(false);
+    setNavigationMode('none');
+    setIsMapFullscreen(false);
+    setRouteInfo(null);
+    setCurrentInstruction('');
+    
+    // Speak cancellation message after a short delay
+    setTimeout(() => {
+      speakMessage(message.content);
+    }, 300);
+    
+    // Hide navigation status after 3 seconds
+    setTimeout(() => {
+      setNavigationStatus(null);
+    }, 3000);
+  };
+
   const handleBackToChat = () => {
     setIsMapFullscreen(false);
     setNavigationMode('none');
@@ -393,6 +517,107 @@ export const NavigationBot: React.FC = () => {
   const toggleMapControls = () => {
     setShowMapControls(!showMapControls);
   };
+
+  // Location error handling functions
+  const handleLocationError = (errorType: LocationErrorType) => {
+    setLocationError({ type: errorType, isOpen: true });
+    
+    // Add error message to chat
+    const errorMessage = getLocationErrorMessage(errorType);
+    const message = addMessage('bot', errorMessage);
+    speakMessage(message.content, 2); // High priority for error messages
+    
+    // Show notification for non-critical errors
+    if (errorType !== 'permission' && errorType !== 'unavailable') {
+      showLocationNotification(errorMessage, 'warning');
+    }
+  };
+
+  const getLocationErrorMessage = (errorType: LocationErrorType): string => {
+    switch (errorType) {
+      case 'permission':
+        return navState.language === 'tamil' 
+          ? 'இருப்பிட அனுமதி மறுக்கப்பட்டது. தயவுசெய்து உங்கள் உலாவி அமைப்புகளில் இருப்பிட அனுமதியை இயக்கவும்.'
+          : 'Location permission denied. Please enable location access in your browser settings.';
+      case 'unavailable':
+        return navState.language === 'tamil'
+          ? 'இருப்பிட சேவை கிடைக்கவில்லை. தயவுசெய்து உங்கள் சாதனத்தில் இருப்பிட சேவையை இயக்கவும்.'
+          : 'Location service unavailable. Please enable location service on your device.';
+      case 'timeout':
+        return navState.language === 'tamil'
+          ? 'இருப்பிட கண்டறிதல் நேரம் முடிந்தது. தயவுசெய்து மீண்டும் முயற்சிக்கவும்.'
+          : 'Location detection timed out. Please try again.';
+      case 'network':
+        return navState.language === 'tamil'
+          ? 'வலையமைப்பு சிக்கல். தயவுசெய்து உங்கள் இணைப்பை சரிபார்க்கவும்.'
+          : 'Network issue. Please check your connection.';
+      case 'too_far':
+        return navState.language === 'tamil'
+          ? 'உங்கள் இருப்பிடம் கல்லூரியிலிருந்து மிகவும் தொலைவில் உள்ளது. தயவுசெய்து அருகிலுள்ள இலக்கை தேர்ந்தெடுக்கவும்.'
+          : 'Your location is too far from campus. Please select a nearby destination.';
+      default:
+        return navState.language === 'tamil'
+          ? 'இருப்பிட சிக்கல் ஏற்பட்டது. தயவுசெய்து மீண்டும் முயற்சிக்கவும்.'
+          : 'Location error occurred. Please try again.';
+    }
+  };
+
+  const handleRetryLocation = async () => {
+    if (!locationServiceRef.current) return;
+    
+    setLocationError(null);
+    
+    try {
+      const position = await locationServiceRef.current.getCurrentPosition();
+      const newLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
+      
+      // Check if location is within campus bounds
+      if (!locationServiceRef.current.isWithinCampusBounds(newLocation.lat, newLocation.lng)) {
+        handleLocationError('too_far');
+        return;
+      }
+      
+      setUserLocation(newLocation);
+      
+      // Add success message
+      const successMessage = navState.language === 'tamil' 
+        ? 'இருப்பிடம் வெற்றிகரமாக கண்டறியப்பட்டது!'
+        : 'Location detected successfully!';
+      const message = addMessage('bot', successMessage);
+      speakMessage(message.content);
+      
+      // Show success notification
+      showLocationNotification(successMessage, 'success');
+      
+    } catch (error) {
+      const locationError = error as any;
+      handleLocationError(locationError.type || 'general');
+    }
+  };
+
+  const handleManualLocation = () => {
+    setLocationError(null);
+    // Reset to home to allow user to select a different destination
+    resetToHome();
+  };
+
+  const closeLocationError = () => {
+    setLocationError(null);
+  };
+
+  const showLocationNotification = (message: string, type: 'success' | 'error' | 'warning' | 'info') => {
+    setLocationNotification({
+      message,
+      type,
+      isVisible: true
+    });
+  };
+
+  const closeLocationNotification = () => {
+    setLocationNotification(null);
+  };
+
+
 
   if (showSplash) {
     return <SplashScreen onComplete={() => setShowSplash(false)} />;
@@ -714,7 +939,7 @@ export const NavigationBot: React.FC = () => {
 
                 {navState.selectedDestination && (
                   <button
-                    onClick={resetNavigation}
+                    onClick={handleDestinationCancel}
                     className="px-4 md:px-6 py-2 md:py-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-full text-xs md:text-sm font-medium transition-all duration-300 transform hover:scale-105 shadow-lg"
                   >
                     {getTranslation('newDestination', navState.language)}
@@ -769,11 +994,46 @@ export const NavigationBot: React.FC = () => {
       </div>
 
       {/* Settings Modal */}
-      <SettingsModal
-        isOpen={showSettings}
-        onClose={() => setShowSettings(false)}
-        language={navState.language}
-      />
-    </div>
-  );
-};
+              <SettingsModal 
+          isOpen={showSettings} 
+          onClose={() => setShowSettings(false)}
+          language={navState.language}
+        />
+        
+        {/* Location Error Modal */}
+        {locationError && (
+          <LocationErrorModal
+            isOpen={locationError.isOpen}
+            onClose={closeLocationError}
+            errorType={locationError.type}
+            language={navState.language}
+            onRetry={handleRetryLocation}
+            onManualLocation={handleManualLocation}
+          />
+        )}
+        
+        {/* Location Notification */}
+        {locationNotification && (
+          <LocationNotification
+            message={locationNotification.message}
+            type={locationNotification.type}
+            isVisible={locationNotification.isVisible}
+            onClose={closeLocationNotification}
+            autoHide={true}
+            duration={5000}
+          />
+        )}
+        
+        {/* Navigation Status */}
+        {navigationStatus && (
+          <NavigationStatus
+            isVisible={navigationStatus.isVisible}
+            type={navigationStatus.type}
+            message={navigationStatus.message}
+            language={navState.language}
+            onClose={() => setNavigationStatus(null)}
+          />
+        )}
+      </div>
+    );
+  };

@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { MapPin, Navigation } from 'lucide-react';
 import { buildings } from '../data/campus';
 import { CustomLocationsManager } from '../utils/customLocations';
+import { LocationService, LocationErrorType } from '../utils/locationService';
 
 interface NavigationMapProps {
   selectedDestination: string | null;
@@ -37,9 +38,16 @@ export const NavigationMap: React.FC<NavigationMapProps> = ({
   const routeDeviationThreshold = 50; // 50 meters - recalculate route if user deviates
   const lastRouteRecalculationRef = useRef<number>(0);
   const lastFeedbackTimeRef = useRef<number>(0);
+  const currentDestinationRef = useRef<string | null>(null);
 
   // Function to check if user has reached a waypoint and trigger instruction
   const checkWaypointInstruction = (userLatLng: any) => {
+    // Check if destination has changed - don't process old instructions
+    if (currentDestinationRef.current !== selectedDestination) {
+      console.log('Destination changed, skipping waypoint instruction');
+      return;
+    }
+    
     if (routeInstructionsRef.current.length === 0 || routeWaypointsRef.current.length === 0) return;
     
     const currentIndex = currentInstructionIndexRef.current;
@@ -478,12 +486,31 @@ export const NavigationMap: React.FC<NavigationMapProps> = ({
       }
     });
 
-    map.on('locationerror', function() {
-      console.log("Could not detect location, using default campus center");
+    map.on('locationerror', function(e: any) {
+      console.log("Location error detected:", e);
       
-      // Notify parent component about location issue
+      // Determine error type based on the error code
+      let errorType: LocationErrorType = 'general';
+      
+      if (e.code === 1) {
+        errorType = 'permission';
+      } else if (e.code === 2) {
+        errorType = 'unavailable';
+      } else if (e.code === 3) {
+        errorType = 'timeout';
+      }
+      
+      // Notify parent component about location issue with specific error type
       if (onNavigationInstruction) {
-        onNavigationInstruction("Could not detect your location. Please check your location permissions and try again.", undefined);
+        const errorMessage = errorType === 'permission' 
+          ? "Location permission denied. Please enable location access in your browser settings."
+          : errorType === 'unavailable'
+          ? "Location service unavailable. Please check your device location settings."
+          : errorType === 'timeout'
+          ? "Location detection timed out. Please try again."
+          : "Could not detect your location. Please check your location permissions and try again.";
+        
+        onNavigationInstruction(errorMessage, undefined);
       }
     });
 
@@ -574,6 +601,16 @@ export const NavigationMap: React.FC<NavigationMapProps> = ({
     if (!L || !L.Routing) {
       console.warn('Leaflet Routing Machine not available');
       return;
+    }
+    
+    // Check if destination has changed
+    if (currentDestinationRef.current !== selectedDestination) {
+      console.log('Destination changed from', currentDestinationRef.current, 'to', selectedDestination);
+      currentDestinationRef.current = selectedDestination;
+      hasInitialNavigationMessageRef.current = false;
+      currentInstructionIndexRef.current = 0;
+      lastSpokenWaypointRef.current = -1;
+      lastInstructionTimeRef.current = 0;
     }
     
     // Check if it's a custom location first
