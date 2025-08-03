@@ -36,6 +36,7 @@ export const NavigationMap: React.FC<NavigationMapProps> = ({
   const hasInitialNavigationMessageRef = useRef<boolean>(false);
   const routeDeviationThreshold = 50; // 50 meters - recalculate route if user deviates
   const lastRouteRecalculationRef = useRef<number>(0);
+  const lastFeedbackTimeRef = useRef<number>(0);
 
   // Function to check if user has reached a waypoint and trigger instruction
   const checkWaypointInstruction = (userLatLng: any) => {
@@ -80,10 +81,15 @@ export const NavigationMap: React.FC<NavigationMapProps> = ({
       instructionText = instructionText.replace(/for \d+\.?\d* m/, '');
       instructionText = instructionText.replace(/Continue on .* for \d+\.?\d* m/, 'Continue straight');
       
+      // Additional protection against duplicate instructions
+      const now = Date.now();
+      if (now - lastInstructionTimeRef.current < 3000) return; // Prevent rapid successive instructions
+      
       // Send the instruction
       if (onNavigationInstruction) {
         console.log(`Waypoint reached: Sending instruction ${currentIndex + 1}/${routeInstructionsRef.current.length}: "${instructionText}" at distance ${distanceToWaypoint}m`);
         onNavigationInstruction(instructionText, distanceToWaypoint);
+        lastInstructionTimeRef.current = now;
       }
       
       // Mark this waypoint as spoken
@@ -264,6 +270,10 @@ export const NavigationMap: React.FC<NavigationMapProps> = ({
   const provideNavigationFeedback = (userLatLng: any) => {
     if (routeCoordinatesRef.current.length === 0) return;
     
+    // Add debouncing to prevent excessive calls
+    const now = Date.now();
+    if (now - lastFeedbackTimeRef.current < 2000) return; // Only provide feedback every 2 seconds
+    
     // Find closest point on route
     let minDistance = Infinity;
     let closestPoint = null;
@@ -282,6 +292,7 @@ export const NavigationMap: React.FC<NavigationMapProps> = ({
     // Provide feedback based on distance to route
     if (minDistance > 30 && minDistance <= routeDeviationThreshold) {
       console.log(`User is ${minDistance}m from route - providing guidance`);
+      lastFeedbackTimeRef.current = now;
       // Could add gentle guidance here if needed
     }
   };
@@ -732,6 +743,11 @@ export const NavigationMap: React.FC<NavigationMapProps> = ({
     if (userMarkerRef.current) {
       userMarkerRef.current.setLatLng(userLatLng);
     }
+    
+    // Add debouncing to prevent excessive instruction checks
+    const now = Date.now();
+    if (now - lastInstructionTimeRef.current < 1000) return; // Only check instructions every 1 second
+    lastInstructionTimeRef.current = now;
     
     // Check for GPS navigation waypoint instructions
     if (routeInstructionsRef.current.length > 0) {
