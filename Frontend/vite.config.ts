@@ -3,8 +3,13 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
-  base: '/Navigation-Bot-AEC/', 
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
+  server: {
+    port: 3000,
+    host: true,
+    open: true
+  },
+  assetsInclude: ['**/*.mp4', '**/*.jpg', '**/*.jpeg', '**/*.png']
 });

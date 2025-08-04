@@ -53,8 +53,12 @@ export const DestinationImage: React.FC<DestinationImageProps> = ({
             alt={language === 'tamil' ? destinationName : (englishName || destinationName)}
             className="w-full h-64 object-cover"
             onError={(e) => {
+              console.error('Image loading error:', imageUrl, e);
               const target = e.target as HTMLImageElement;
               target.src = '/Images/arunai center jpeg.jpeg'; // Fallback image
+            }}
+            onLoad={() => {
+              console.log('Image loaded successfully:', imageUrl);
             }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />

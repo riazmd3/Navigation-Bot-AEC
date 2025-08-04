@@ -47,8 +47,17 @@ export const BotAnimation: React.FC<BotAnimationProps> = ({
                       isSpeaking ? 'brightness(1.1) saturate(1.2)' : 
                       'brightness(1) saturate(1)'
             }}
+            onError={(e) => {
+              console.error('Video loading error:', e);
+            }}
+            onLoadStart={() => {
+              console.log('Video loading started');
+            }}
+            onCanPlay={() => {
+              console.log('Video can play');
+            }}
           >
-            <source src="/Bot Animation/Bot.mp4" type="video/mp4" />
+            <source src="/BotAnimation/Bot.mp4" type="video/mp4" />
             Your browser does not support the video tag.
           </video>
           
