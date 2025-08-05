@@ -39,6 +39,8 @@ export const NavigationMap: React.FC<NavigationMapProps> = ({
   const lastRouteRecalculationRef = useRef<number>(0);
   const lastFeedbackTimeRef = useRef<number>(0);
   const currentDestinationRef = useRef<string | null>(null);
+  const lastDestinationRef = React.useRef<string | null>(null);
+  const lastUserLocationRef = React.useRef<{ lat: number; lng: number } | null>(null);
 
   // Function to check if user has reached a waypoint and trigger instruction
   const checkWaypointInstruction = (userLatLng: any) => {
@@ -597,7 +599,18 @@ export const NavigationMap: React.FC<NavigationMapProps> = ({
 
 
   useEffect(() => {
-    if (!mapInstanceRef.current || !selectedDestination) return;
+    if (!mapInstanceRef.current || !selectedDestination || !userLocation) return;
+    // Only recalculate if destination or user location actually changed
+    if (
+      lastDestinationRef.current === selectedDestination &&
+      lastUserLocationRef.current &&
+      lastUserLocationRef.current.lat === userLocation.lat &&
+      lastUserLocationRef.current.lng === userLocation.lng
+    ) {
+      return;
+    }
+    lastDestinationRef.current = selectedDestination;
+    lastUserLocationRef.current = userLocation;
 
     const L = (window as any).L;
     if (!L || !L.Routing) {
@@ -769,7 +782,7 @@ export const NavigationMap: React.FC<NavigationMapProps> = ({
     });
     }, 100); // Small delay to ensure cleanup is complete
 
-  }, [selectedDestination, onRouteCalculated]); // Removed userLocation to prevent constant recalculations
+  }, [selectedDestination, userLocation]); // Removed userLocation to prevent constant recalculations
 
   // Separate effect to handle user location updates for navigation instructions
   useEffect(() => {

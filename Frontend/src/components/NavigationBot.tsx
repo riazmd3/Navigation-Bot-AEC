@@ -75,8 +75,8 @@ export const NavigationBot: React.FC = () => {
     // Initialize location service
     locationServiceRef.current = LocationService.getInstance();
     
-    // Use default campus center location (will be updated by map's location detection)
-    setUserLocation({ lat: 12.192850, lng: 79.083730 });
+    // Only set default user location if not already set
+    setUserLocation(prev => prev ?? { lat: 12.192850, lng: 79.083730 });
 
     // Initial welcome message
     const welcomeMessage: ChatMessage = {
@@ -104,15 +104,11 @@ export const NavigationBot: React.FC = () => {
 
   const toggleLanguage = () => {
     const newLanguage = navState.language === 'tamil' ? 'english' : 'tamil';
-    setNavState(prev => ({ ...prev, language: newLanguage }));
+    setNavState(state => ({ ...state, language: newLanguage }));
     speechManagerRef.current?.setLanguage(newLanguage);
     // Optionally, add a bot message in the new language (do not reset chat)
     const message = addMessage('bot', getTranslation('ready', newLanguage));
     speakMessage(message.content);
-  };
-
-  const toggleARMode = () => {
-    setNavState(prev => ({ ...prev, isARMode: !prev.isARMode }));
   };
 
   const addMessage = (type: 'bot' | 'user', content: string) => {
@@ -207,44 +203,30 @@ export const NavigationBot: React.FC = () => {
   };
 
   const handleDestinationSelect = (destinationKey: string) => {
-    // Prevent multiple simultaneous operations and clear any existing timeouts
     if (isProcessing || speechManagerRef.current?.isBusy || navState.isListening) {
       console.log('Operation already in progress, ignoring click');
       return;
     }
-    
     setIsProcessing(true);
-    
-    // Stop any current speech and clear queue immediately
     speechManagerRef.current?.stopSpeaking();
     speechManagerRef.current?.clearQueue();
     speechManagerRef.current?.stopListening();
-    
-    // Clear any ongoing navigation state
     setCurrentInstruction('');
     setLastSpokenInstruction('');
     setLastSpeechTime(0);
-    
-    // Check if it's a regular building or custom location
     const building = buildings[destinationKey];
     const customLocationsManager = CustomLocationsManager.getInstance();
     const customLocations = customLocationsManager.getCustomLocationsAsBuildings();
     const customLocation = customLocations[destinationKey];
-    
-    // Use building or custom location data
     const destinationData = building || customLocation;
     if (!destinationData) {
       console.log('Destination not found:', destinationKey);
       setIsProcessing(false);
       return;
     }
-
-    // Show destination image if available
     if (destinationData.image) {
       setShowDestinationImage(true);
     }
-
-    // Show calculating status
     setNavigationStatus({
       isVisible: true,
       type: 'calculating',
@@ -252,34 +234,26 @@ export const NavigationBot: React.FC = () => {
         ? 'வழி கணக்கிடப்படுகிறது...'
         : 'Calculating route...'
     });
-    
-    setNavState(prev => ({ 
-      ...prev, 
-      selectedDestination: destinationKey,
+    setNavState({ 
       currentStep: 'navigating',
+      selectedDestination: destinationKey,
+      isListening: false,
       isSpeaking: false,
-      isListening: false
-    }));
-
+      isMuted: navState.isMuted,
+      language: navState.language,
+      isARMode: false,
+      cameraPermission: false
+    });
     const response = addMessage('bot', getTranslation('calculating', navState.language, {
       destination: navState.language === 'tamil' ? destinationData.name : (destinationData.englishName || destinationData.name),
       description: destinationData.description || ''
-    })
-    );
-    
+    }));
     setShowMap(true);
-    setNavigationMode('map'); // Start with map mode
-    setIsMapFullscreen(true); // Make map fullscreen on mobile
-    
-    // Speak message after a short delay to ensure state is updated
+    setNavigationMode('map');
+    setIsMapFullscreen(true);
     setTimeout(() => {
       speakMessage(response.content);
     }, 500);
-    
-    // Reset processing flag after speech
-    setTimeout(() => {
-      setIsProcessing(false);
-    }, 3000);
   };
 
   const toggleNavigationMode = () => {
@@ -294,25 +268,19 @@ export const NavigationBot: React.FC = () => {
 
   const handleRouteCalculated = (distance: number, duration: number) => {
     setRouteInfo({ distance, duration });
-    
-    // Hide calculating status
     setNavigationStatus(null);
-    
     const distanceText = distance > 1000 
       ? `${(distance / 1000).toFixed(1)} kilometers`
       : `${Math.round(distance)} meters`;
-    
     const durationText = duration > 60 
       ? `${Math.round(duration / 60)} minutes`
       : `${Math.round(duration)} seconds`;
-
     const response = addMessage('bot', getTranslation('routeCalculated', navState.language, {
       distance: distanceText,
       duration: durationText
-    })
-    );
-    
+    }));
     speakMessage(response.content);
+    setIsProcessing(false); // <-- Always clear processing here
   };
 
   const handleNavigationInstruction = (instruction: string, distance?: number) => {
@@ -435,40 +403,6 @@ export const NavigationBot: React.FC = () => {
     }, 500);
   };
 
-  const resetNavigation = () => {
-    // Immediately stop all speech and clear queue
-    speechManagerRef.current?.stopSpeaking();
-    speechManagerRef.current?.clearQueue();
-    speechManagerRef.current?.stopListening();
-    
-    // Clear any ongoing navigation state
-    setCurrentInstruction('');
-    setLastSpokenInstruction('');
-    setLastSpeechTime(0);
-    
-    setNavState(prev => ({
-      currentStep: 'welcome',
-      selectedDestination: null,
-      isListening: false,
-      isSpeaking: false,
-      isMuted: navState.isMuted, // Preserve mute state
-      language: navState.language,
-      isARMode: false,
-      cameraPermission: false
-    }));
-    setShowMap(false);
-    setNavigationMode('none');
-    setIsMapFullscreen(false);
-    setRouteInfo(null);
-    setCurrentInstruction('');
-    
-    // Add message and speak after a delay
-    setTimeout(() => {
-      const response = addMessage('bot', getTranslation('helpMore', navState.language));
-      speakMessage(response.content);
-    }, 500);
-  };
-
   // New function to handle destination cancellation with better speech management
   const handleDestinationCancel = () => {
     // Immediately stop all speech and clear queue
@@ -497,7 +431,7 @@ export const NavigationBot: React.FC = () => {
         : 'Navigation Cancelled'
     });
     
-    setNavState(prev => ({
+    setNavState({
       currentStep: 'welcome',
       selectedDestination: null,
       isListening: false,
@@ -506,7 +440,7 @@ export const NavigationBot: React.FC = () => {
       language: navState.language,
       isARMode: false,
       cameraPermission: false
-    }));
+    });
     setShowMap(false);
     setNavigationMode('none');
     setIsMapFullscreen(false);
@@ -661,6 +595,8 @@ export const NavigationBot: React.FC = () => {
   if (showSplash) {
     return <SplashScreen onComplete={() => setShowSplash(false)} />;
   }
+
+  const queueLength = speechManagerRef.current?.queueLength ?? 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 relative">
@@ -916,8 +852,8 @@ export const NavigationBot: React.FC = () => {
               <p className="text-blue-100 text-sm mt-1">
                 {navState.isListening ? getTranslation('listening', navState.language) : 
                  navState.isSpeaking ? getTranslation('speaking', navState.language) : 
-                 speechManagerRef.current?.queueLength > 0 ? 
-                   `${speechManagerRef.current.queueLength} message${speechManagerRef.current.queueLength > 1 ? 's' : ''} in queue` :
+                 queueLength > 0 ? 
+                   `${queueLength} message${queueLength > 1 ? 's' : ''} in queue` :
                  getTranslation('ready', navState.language)}
               </p>
             </div>
