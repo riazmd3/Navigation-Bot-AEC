@@ -692,7 +692,26 @@ export const NavigationBot: React.FC = () => {
 
               {/* Close Button */}
               <button
-                onClick={() => setIsMapFullscreen(false)}
+                onClick={() => {
+                  setIsMapFullscreen(false);
+                  setShowMap(false);
+                  setNavigationMode('none');
+                  setNavState({
+                    currentStep: 'welcome',
+                    selectedDestination: null,
+                    isListening: false,
+                    isSpeaking: false,
+                    isMuted: navState.isMuted,
+                    language: navState.language,
+                    isARMode: false,
+                    cameraPermission: false
+                  });
+                  setRouteInfo(null);
+                  setCurrentInstruction('');
+                  // Add a bot message prompting for new destination
+                  const prompt = getTranslation('selectDestination', navState.language);
+                  addMessage('bot', prompt);
+                }}
                 className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg"
               >
                 <X className="w-5 h-5" />
