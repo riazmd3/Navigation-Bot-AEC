@@ -37,6 +37,7 @@ export const NavigationBot: React.FC = () => {
   const [routeInfo, setRouteInfo] = useState<{ distance: number; duration: number } | null>(null);
   const [showMap, setShowMap] = useState(false);
   const [currentInstruction, setCurrentInstruction] = useState<string>('');
+  const [currentDistance, setCurrentDistance] = useState<number | undefined>(undefined);
   const [isProcessing, setIsProcessing] = useState(false); // Prevent multiple operations
   const [navigationMode, setNavigationMode] = useState<'none' | 'map' | 'ar' | 'split'>('none');
   const [lastSpokenInstruction, setLastSpokenInstruction] = useState<string>('');
@@ -105,8 +106,8 @@ export const NavigationBot: React.FC = () => {
     const newLanguage = navState.language === 'tamil' ? 'english' : 'tamil';
     setNavState(prev => ({ ...prev, language: newLanguage }));
     speechManagerRef.current?.setLanguage(newLanguage);
-    
-    const message = addMessage('bot', getTranslation('welcome', newLanguage));
+    // Optionally, add a bot message in the new language (do not reset chat)
+    const message = addMessage('bot', getTranslation('ready', newLanguage));
     speakMessage(message.content);
   };
 
@@ -322,6 +323,10 @@ export const NavigationBot: React.FC = () => {
       console.log('Navigation cancelled, ignoring instruction:', instruction);
       return;
     }
+    
+    // Update current instruction and distance for AR display
+    setCurrentInstruction(instruction);
+    setCurrentDistance(distance);
     
     // Check for specific location error types
     if (instruction.includes('Location permission denied')) {
@@ -840,7 +845,12 @@ export const NavigationBot: React.FC = () => {
                 isActive={true}
                 onToggle={() => {}}
                 currentInstruction={currentInstruction}
+                currentDistance={currentDistance}
                 language={navState.language}
+                userLocation={userLocation}
+                destinationName={navState.selectedDestination ? buildings[navState.selectedDestination]?.name : undefined}
+                totalDistance={routeInfo?.distance}
+                estimatedTime={routeInfo?.duration}
               />
             )}
             
@@ -852,7 +862,12 @@ export const NavigationBot: React.FC = () => {
                     isActive={true}
                     onToggle={() => {}}
                     currentInstruction={currentInstruction}
+                    currentDistance={currentDistance}
                     language={navState.language}
+                    userLocation={userLocation}
+                    destinationName={navState.selectedDestination ? buildings[navState.selectedDestination]?.name : undefined}
+                    totalDistance={routeInfo?.distance}
+                    estimatedTime={routeInfo?.duration}
                   />
                 </div>
                 

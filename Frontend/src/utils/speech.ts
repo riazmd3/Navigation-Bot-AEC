@@ -47,7 +47,8 @@ export class SpeechManager {
   }
 
   // Add speech to queue with optional priority
-  speak(text: string, onStart?: () => void, onEnd?: () => void, priority: number = 0): Promise<void> {
+  async speak(text: string, onStart?: () => void, onEnd?: () => void, priority: number = 0): Promise<void> {
+    await this.waitForVoices();
     return new Promise((resolve) => {
       const speechItem = {
         text,
@@ -109,7 +110,8 @@ export class SpeechManager {
   }
 
   // Immediate speech without queue (for urgent messages)
-  private speakImmediate(text: string, onStart?: () => void, onEnd?: () => void): Promise<void> {
+  private async speakImmediate(text: string, onStart?: () => void, onEnd?: () => void): Promise<void> {
+    await this.waitForVoices();
     return new Promise((resolve) => {
       if (this.synthesis.speaking) {
         this.synthesis.cancel();
@@ -157,6 +159,25 @@ export class SpeechManager {
       };
 
       this.synthesis.speak(utterance);
+    });
+  }
+
+  // Wait for voices to be loaded
+  async waitForVoices(): Promise<void> {
+    if (this.synthesis.getVoices().length > 0) return;
+    return new Promise((resolve) => {
+      const handler = () => {
+        if (this.synthesis.getVoices().length > 0) {
+          this.synthesis.removeEventListener('voiceschanged', handler);
+          resolve();
+        }
+      };
+      this.synthesis.addEventListener('voiceschanged', handler);
+      // Fallback: resolve after 2s even if voiceschanged doesn't fire
+      setTimeout(() => {
+        this.synthesis.removeEventListener('voiceschanged', handler);
+        resolve();
+      }, 2000);
     });
   }
 
