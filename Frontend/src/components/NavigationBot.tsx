@@ -227,6 +227,7 @@ export const NavigationBot: React.FC = () => {
     if (destinationData.image) {
       setShowDestinationImage(true);
     }
+    // Show calculating/loading state for 5 seconds before showing the map and speaking
     setNavigationStatus({
       isVisible: true,
       type: 'calculating',
@@ -234,26 +235,17 @@ export const NavigationBot: React.FC = () => {
         ? 'வழி கணக்கிடப்படுகிறது...'
         : 'Calculating route...'
     });
-    setNavState({ 
-      currentStep: 'navigating',
-      selectedDestination: destinationKey,
-      isListening: false,
-      isSpeaking: false,
-      isMuted: navState.isMuted,
-      language: navState.language,
-      isARMode: false,
-      cameraPermission: false
-    });
-    const response = addMessage('bot', getTranslation('calculating', navState.language, {
-      destination: navState.language === 'tamil' ? destinationData.name : (destinationData.englishName || destinationData.name),
-      description: destinationData.description || ''
-    }));
-    setShowMap(true);
-    setNavigationMode('map');
-    setIsMapFullscreen(true);
     setTimeout(() => {
+      setShowMap(true);
+      setNavigationMode('map');
+      setIsMapFullscreen(true);
+      setNavigationStatus(null); // Hide the loading status
+      const response = addMessage('bot', getTranslation('calculating', navState.language, {
+        destination: navState.language === 'tamil' ? destinationData.name : (destinationData.englishName || destinationData.name),
+        description: destinationData.description || ''
+      }));
       speakMessage(response.content);
-    }, 500);
+    }, 5000);
   };
 
   const toggleNavigationMode = () => {
@@ -446,12 +438,11 @@ export const NavigationBot: React.FC = () => {
     setIsMapFullscreen(false);
     setRouteInfo(null);
     setCurrentInstruction('');
-    
+    setIsProcessing(false); // <-- Add this line
     // Speak cancellation message after a short delay
     setTimeout(() => {
       speakMessage(message.content);
     }, 300);
-    
     // Hide navigation status after 2 seconds
     setTimeout(() => {
       setNavigationStatus(null);
